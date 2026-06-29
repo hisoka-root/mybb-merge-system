@@ -478,7 +478,7 @@ function wcf1_encrypt($value, $method) {
 		case 'sha1': return sha1($value);
 		case 'md5': return md5($value);
 		case 'crc32': return crc32($value);
-		case 'crypt': return crypt($value);
+		case 'crypt': return crypt($value, $value);
 		default: return $value;
 	}
 }

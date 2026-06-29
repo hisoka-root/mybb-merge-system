@@ -42,13 +42,15 @@ jobs:
           grep -rn "\.\*" boards/ resources/ --include="*.php" | grep -i "GROUP BY" || echo "  None found"
 
           echo "=== Checking for MyISAM engine references ==="
-          ! grep -rn "ENGINE=MyISAM" boards/ resources/ --include="*.php" && echo "  None found (good)" || echo "  WARNING: MyISAM references found"
+          # Exclude lines that are string comparisons (check_table_type checks)
+          ! grep -rn "ENGINE=MyISAM" boards/ resources/ --include="*.php" | grep -v "stripos\|ENGINE=MyISAM.*!==" && echo "  None found (good)" || echo "  WARNING: MyISAM references found"
 
           echo "=== Checking for deprecated integer display widths ==="
-          ! grep -rnP "(int|bigint|smallint|tinyint|mediumint)\(\d+\)" boards/ resources/ --include="*.php" && echo "  None found (good)" || echo "  WARNING: deprecated display widths found"
+          # Only flag display widths in SQL DDL, not in type detection comparisons
+          ! grep -rnP "(?<!['\"a-zA-Z])(int|bigint|smallint|tinyint|mediumint)\(\d+\)" boards/ resources/ --include="*.php" | grep -v "tinyint(1)" && echo "  None found (good)" || echo "  WARNING: deprecated display widths found"
 
           echo "=== Checking for utf8 charset (should be utf8mb4) ==="
-          ! grep -rnP "CHARACTER SET utf8[^m]" boards/ resources/ --include="*.php" && echo "  None found (good)" || echo "  WARNING: utf8 charset references found"
+          ! grep -rnP "CHARACTER SET utf8[^m]" boards/ resources/ --include="*.php" && echo "  None found (good)" || echo "  WARNING: utf8 charset references found (should be utf8mb4)"
 
       - name: Test basic SQL connectivity
         run: |
