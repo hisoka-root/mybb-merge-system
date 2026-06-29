@@ -17,6 +17,19 @@ This update focuses on getting the MyBB Merge System running on modern PHP versi
   - BBCode/HTML output format changes
 - **Password handling**: IPS5 uses Laravel's password hashing (bcrypt `$2y$` or argon2). Added `check_ipb5()` function using `password_verify()` and `ipb5` password type to `loginconvert.php`.
 
+### New Converter: Discourse
+
+- **New converter for Discourse** (`boards/discourse.php` + 12 modules in `boards/discourse/`). Discourse is a modern open-source forum platform (Ruby on Rails, PostgreSQL).
+- **Modules**: users, usergroups (trust levels + custom groups), forums (categories), threads, posts, polls, pollvotes, privatemessages, moderators (admin/mod boolean flags), avatars (custom + Gravatar), attachments (post_uploads), settings (site_settings), bbcode_parser (cooked HTML→BBcode).
+- **Key features**:
+  - Maps Discourse trust levels (0-4) to MyBB groups; TL3/TL4 get custom imported groups
+  - Admin/moderator boolean flags mapped to MyBB admin/mod groups
+  - Password hashing uses `password_verify()` for Ruby's `has_secure_password` bcrypt format
+  - Polls module handles optional Discourse poll plugin (silently skips if polls table missing)
+  - Post content converts Discourse "cooked" HTML to BBcode via custom parser
+  - PostgreSQL-only (`$supported_databases = array("pgsql")`)
+- Added `check_discourse()` and `discourse` password type to `loginconvert.php`
+
 ### Requirements Check Enhancements
 
 - **MySQL engine detection**: Added check for MyISAM tables in the MyBB database during the requirements phase. Warns if MyISAM tables are found and recommends converting to InnoDB before merging.
@@ -132,3 +145,4 @@ The **WBB4** converter should either be restricted to MySQL or have its `GROUP_C
 - **`passwordconvert` column cleanup**: The `loginconvert.php` plugin relies on a temporary `passwordconvert` column added to MyBB's `users` table during conversion. If the merge system is interrupted or old conversion artifacts remain, this column may need manual cleanup.
 - **Converters marked "not supported anymore"**: Several password hash types are commented as unsupported in `loginconvert.php` (`vb3`, `ipb2`, `smf`). Users converting from very old vBulletin 3, IPB 2, or SMF 1.x installations may have login issues post-migration.
 - **IPS5 Converter (`boards/ipb5/`)**: This is an untested skeleton built from the IPS4 converter. Column names and table structures are unverified against a real IPS5 database. The converter will appear in the board list but should be tested thoroughly before production use. Contributions from users with access to IPS5 are welcome.
+- **Discourse Converter (`boards/discourse/`)**: New converter for Discourse. Tested against standard Discourse schema but may need adjustments for custom configurations, plugins, or older Discourse versions. Discourse uses PostgreSQL exclusively — ensure your PHP installation has PDO PostgreSQL support.

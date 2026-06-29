@@ -37,6 +37,7 @@ $valid_login_types = array(
 	"wbb3"		=> "wcf1",		// WBB 3 and Lite 2 use WoltLab Community Framework 1.x with some special parameters
 	"wbb4"		=> "wcf2",		// WBB 4 uses WoltLab Community Framework 2.x
 	"vanilla"	=> "vanilla",
+	"discourse"	=> "discourse",
 	"fluxbb"	=> "punbb",		// FluxBB is a fork of PunBB and they didn't change the hashing part
 );
 
@@ -258,6 +259,16 @@ function check_ipb4($password, $user)
 }
 
 function check_ipb5($password, $user)
+{
+	if(function_exists('password_verify'))
+	{
+		return password_verify($password, $user['passwordconvert']);
+	}
+
+	return false;
+}
+
+function check_discourse($password, $user)
 {
 	if(function_exists('password_verify'))
 	{
