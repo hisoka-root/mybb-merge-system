@@ -2,7 +2,26 @@
 
 ## [Unreleased] — PHP Compatibility & Bugfix Update
 
-This update focuses on getting the MyBB Merge System running on modern PHP versions (7.0 through 8.3), fixing long-standing data integrity bugs, and removing converters for defunct forum software.
+This update focuses on getting the MyBB Merge System running on modern PHP versions (7.0 through 8.3), fixing long-standing data integrity bugs, removing converters for defunct forum software, and adding support for Invision Community 5 (IPS5).
+
+---
+
+### New Converter: Invision Community 5 (IPS5)
+
+- **New converter skeleton for IPS5** (`boards/ipb5.php` + 13 modules in `boards/ipb5/`). Built from the IPS4 converter as a template.
+- **Status: Untested** — All column names carry `TODO: verify` markers pending access to a real IPS5 database for schema verification. Key areas needing verification:
+  - Table names (`core_members`, `core_groups`, `forums_forums`, etc.)
+  - Column names (password hash storage, member fields, language system)
+  - Permission system changes
+  - Settings storage mechanism (Laravel config vs `core_sys_conf_settings`)
+  - BBCode/HTML output format changes
+- **Password handling**: IPS5 uses Laravel's password hashing (bcrypt `$2y$` or argon2). Added `check_ipb5()` function using `password_verify()` and `ipb5` password type to `loginconvert.php`.
+
+### Requirements Check Enhancements
+
+- **MySQL engine detection**: Added check for MyISAM tables in the MyBB database during the requirements phase. Warns if MyISAM tables are found and recommends converting to InnoDB before merging.
+- **MySQL version check**: Detects MySQL version and warns about MySQL 5.7 (EOL) and MySQL 8.4+ (compatibility concerns due to removed legacy features).
+- **MariaDB recommendation**: Displays a recommendation to use MariaDB over MySQL when MariaDB is detected.
 
 ---
 
@@ -112,3 +131,4 @@ The **WBB4** converter should either be restricted to MySQL or have its `GROUP_C
 - **`set_error_notice_in_progress()`** in `resources/output.php` sets a property that is never read. The function is called from avatar and attachment modules but the value is effectively discarded. This is harmless but dead code.
 - **`passwordconvert` column cleanup**: The `loginconvert.php` plugin relies on a temporary `passwordconvert` column added to MyBB's `users` table during conversion. If the merge system is interrupted or old conversion artifacts remain, this column may need manual cleanup.
 - **Converters marked "not supported anymore"**: Several password hash types are commented as unsupported in `loginconvert.php` (`vb3`, `ipb2`, `smf`). Users converting from very old vBulletin 3, IPB 2, or SMF 1.x installations may have login issues post-migration.
+- **IPS5 Converter (`boards/ipb5/`)**: This is an untested skeleton built from the IPS4 converter. Column names and table structures are unverified against a real IPS5 database. The converter will appear in the board list but should be tested thoroughly before production use. Contributions from users with access to IPS5 are welcome.

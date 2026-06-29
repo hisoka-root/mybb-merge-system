@@ -25,6 +25,7 @@ $valid_login_types = array(
 	"ipb2"		=> "ipb",		// Module isn't supported anymore, but old merges may require it
 	"ipb3"		=> "ipb",
 	"ipb4"		=> "ipb4",
+	"ipb5"		=> "ipb5",
 	"smf"		=> "smf",		// Isn't supported anymore, but the function is still required by smf 1.1 and 2 and there may be "old" users
 	"smf11"		=> "smf11",
 	"smf2"		=> "smf2",
@@ -251,6 +252,16 @@ function check_ipb4($password, $user)
 	if($user['passwordconvert'] == crypt($password, '$2a$13$'.$user['passwordconvertsalt']))
 	{
 		return true;
+	}
+
+	return false;
+}
+
+function check_ipb5($password, $user)
+{
+	if(function_exists('password_verify'))
+	{
+		return password_verify($password, $user['passwordconvert']);
 	}
 
 	return false;

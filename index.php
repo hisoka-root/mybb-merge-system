@@ -685,6 +685,65 @@ else if(!$import_session['requirements_check'] || ($mybb->input['first_page'] ==
 		$debug->log->trace0("Attachments directory writable");
 	}
 
+	// Database engine check - warn about MyISAM tables
+	$myisam_tables = array();
+	$show_warnings = false;
+	if($db->type == "mysqli" || $db->type == "mysql" || $db->type == "mysql_pdo")
+	{
+		$query = $db->write_query("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = '".$config['database']['database']."' AND ENGINE = 'MyISAM' AND TABLE_NAME LIKE '".TABLE_PREFIX."%'");
+		while($table = $db->fetch_array($query))
+		{
+			$myisam_tables[] = $table['TABLE_NAME'];
+		}
+
+		if(!empty($myisam_tables))
+		{
+			$show_warnings = true;
+			$checks['db_engine_status'] = '<span class="fail"><strong>'.$lang->requirementspage_db_myisam_found.'</strong> ('.count($myisam_tables).' tables)</span>';
+		}
+		else
+		{
+			$checks['db_engine_status'] = '<span class="pass">'.$lang->requirementspage_db_innodb_ok.'</span>';
+		}
+	}
+	else
+	{
+		$checks['db_engine_status'] = '<span class="pass">'.$lang->requirementspage_db_innodb_ok.'</span>';
+	}
+
+	// MySQL version check and MariaDB recommendation
+	$db_version = '';
+	if($db->type == "mysqli" || $db->type == "mysql_pdo")
+	{
+		$db_version_query = $db->write_query("SELECT VERSION() as version");
+		$db_version = $db->fetch_field($db_version_query, 'version');
+	}
+
+	if(!empty($db_version))
+	{
+		$checks['mysql_version_status'] = '<span class="pass">'.$db_version.'</span>';
+
+		// Check if this is MariaDB
+		if(stripos($db_version, 'mariadb') !== false)
+		{
+			$checks['mysql_version_status'] = '<span class="pass">'.$db_version.'</span>';
+		}
+		elseif(version_compare($db_version, '8.0', '>=') && version_compare($db_version, '8.4', '<'))
+		{
+			$checks['mysql_version_status'] = '<span class="pass">'.$db_version.'</span>';
+		}
+		elseif(version_compare($db_version, '8.4', '>='))
+		{
+			$show_warnings = true;
+			$checks['mysql_version_status'] = '<span class="fail"><strong>'.$db_version.'</strong></span>';
+		}
+		elseif(version_compare($db_version, '5.7', '<'))
+		{
+			$show_warnings = true;
+			$checks['mysql_version_status'] = '<span class="fail"><strong>'.$db_version.'</strong></span>';
+		}
+	}
+
 	if(!empty($errors))
 	{
 		$output->print_warning(error_list($errors), $lang->requirementspage_reqfailed);
@@ -707,11 +766,43 @@ else if(!$import_session['requirements_check'] || ($mybb->input['first_page'] ==
 			<td class="first">'.$lang->requirementspage_attwritabledesc2.'</td>
 			<td class="last alt_col">'.$checks['attachments_check_status'].'</td>
 		</tr>
+		<tr>
+			<td class="first">'.$lang->requirementspage_db_engine.'</td>
+			<td class="last alt_col">'.$checks['db_engine_status'].'</td>
+		</tr>
+		<tr class="alt_row">
+			<td class="first">'.$lang->requirementspage_mysql_version.'</td>
+			<td class="last alt_col">'.$checks['mysql_version_status'].'</td>
+		</tr>
 		</tbody>
 		</table>
 		</div>
 		</p>
 		<input type="hidden" name="requirements_check" value="1" />';
+
+	if($show_warnings)
+	{
+		if(!empty($myisam_tables))
+		{
+			$output->print_warning($lang->requirementspage_db_myisam_warning);
+		}
+
+		if(!empty($db_version) && stripos($db_version, 'mariadb') === false)
+		{
+			if(version_compare($db_version, '8.4', '>=') || version_compare($db_version, '5.7', '<'))
+			{
+				$output->print_warning($lang->sprintf($lang->requirementspage_mysql_upgrade_warning, $db_version));
+			}
+		}
+
+		if(!empty($db_version) && stripos($db_version, 'mariadb') !== false)
+		{
+			// Extract MariaDB version number for display
+			preg_match('/(\d+\.\d+\.\d+)/', $db_version, $m);
+			$mariadb_ver = !empty($m[1]) ? $m[1] : $db_version;
+			$output->print_warning($lang->sprintf($lang->requirementspage_mariadb_recommended, $mariadb_ver), $lang->requirementspage_db_engine);
+		}
+	}
 
 	if(!empty($errors))
 	{

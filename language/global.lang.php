@@ -116,6 +116,14 @@ $l['requirementspage_checkagain'] = "When you are ready, click \"Check Again\" t
 $l['requirementspage_congrats'] = "Congratulations, you passed all the requirement checks! Click \"Next\" to move right along.
 ";
 
+$l['requirementspage_db_engine'] = "Database Engine:";
+$l['requirementspage_db_myisam_warning'] = "Your MyBB database contains tables using the MyISAM storage engine. MyISAM does not support transactions and can cause data loss during the merge process. It is strongly recommended to convert all tables to InnoDB before proceeding.";
+$l['requirementspage_db_myisam_found'] = "MyISAM tables detected";
+$l['requirementspage_db_innodb_ok'] = "All tables use InnoDB (recommended)";
+$l['requirementspage_mysql_version'] = "MySQL Version:";
+$l['requirementspage_mysql_upgrade_warning'] = "You are running MySQL {1}. MySQL 8.0 introduced breaking changes to the SQL syntax and authentication system. If you are upgrading from MySQL 5.7 to 8.x, ensure your MyBB installation is compatible. The merge system may encounter errors on MySQL 8.4+ due to removed features.";
+$l['requirementspage_mariadb_recommended'] = "MariaDB {1} is recommended over MySQL for MyBB. MariaDB offers better performance, is fully open source, and maintains compatibility with MySQL while providing additional features. If you are planning to migrate databases, consider switching to MariaDB.";
+
 $l['boardspage_welcome'] = "Thank you for choosing MyBB. This wizard will guide you through the process of converting from your existing community to MyBB.";
 $l['boardspage_boardselection'] = "Board Selection";
 $l['boardspage_boardselectiondesc'] = "Please select the board you wish to convert from.";
