@@ -326,9 +326,9 @@ function create_import_fields($text=true)
 		$output->update_progress_bar(0, $lang->sprintf($lang->creating_table, TABLE_PREFIX."trackers"));
 	}
 
-	if($db->type == "mysql" || $db->type == "mysqli")
+	if($db->type == "mysql" || $db->type == "mysqli" || $db->type == "mysql_pdo")
 	{
-		$createtable_trackers_sql_table_engine = " ENGINE=MyISAM";
+		$createtable_trackers_sql_table_engine = " ENGINE=InnoDB";
 	}
 	else
 	{
@@ -389,15 +389,15 @@ function create_import_fields($text=true)
 				// Can be achieved in a transaction if we'd finally support it.
 				foreach($columns_to_add as $column)
 				{
-					$db->write_query("ALTER TABLE ".TABLE_PREFIX.$table." ADD {$column} int NOT NULL DEFAULT '0'");
+					$db->write_query("ALTER TABLE ".TABLE_PREFIX.$table." ADD {$column} int NOT NULL DEFAULT 0");
 				}
 			}
 			else
 			{
 				$columns_sql = implode(" int NOT NULL default '0', ADD ", $columns_to_add);
-				$db->write_query("ALTER TABLE ".TABLE_PREFIX.$table." ADD {$columns_sql} int NOT NULL DEFAULT '0'");
+				$db->write_query("ALTER TABLE ".TABLE_PREFIX.$table." ADD {$columns_sql} int NOT NULL DEFAULT 0");
 
-				if($db->type == "mysql" || $db->type == "mysqli")
+				if($db->type == "mysql" || $db->type == "mysqli" || $db->type == "mysql_pdo")
 				{
 					foreach($columns as $column)
 					{
@@ -1225,7 +1225,7 @@ function get_column_length_info($table, $cache=true, $hard=false)
 				$columninfo['max'] = MERGE_DATATYPE_INT_BIGINT_MAX;
 
 				// The table suggests it as a BOOLEAN column created by MyBB.
-				if($column_type_table == 'tinyint(1)')
+				if($column_type_table == 'tinyint(1)' || $column_type_table == 'tinyint')
 				{
 					$columninfo['type_table'] = MERGE_DATATYPE_BOOL;
 					$columninfo['min_table'] = 0;
@@ -1337,7 +1337,7 @@ function get_column_length_info($table, $cache=true, $hard=false)
 		// Now we start dealing with MySQL and PostgreSQL.
 		// tinyint(1) is a specialty in MySQL for BOOL/BOOLEAN, getting it done will ease our job.
 		// The boolean type that is equivalent to TINYINT(1) in MySQL and boolean in PostgreSQL.
-		else if($column_type == 'tinyint(1)' || $column_type == 'boolean')
+		else if($column_type == 'tinyint(1)' || $column_type == 'tinyint' || $column_type == 'boolean')
 		{
 			$columninfo['type'] = MERGE_DATATYPE_BOOL;
 			$columninfo['min'] = 0;

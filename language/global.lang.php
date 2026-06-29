@@ -225,6 +225,7 @@ $l['finish_report_type'] = "Please select the report style you wish to generate.
 $l['finish_report_type_txt'] = "Plain Text File";
 $l['finish_report_type_html'] = "HTML (Browser Viewable) File";
 
+$l['warning_myisam'] = "The source table \"{1}\" is in MyISAM format. MyISAM lacks transaction support and can cause data integrity issues. Consider converting to InnoDB before running the merge system.";
 $l['warning_innodb'] = "The table \"{1}\" is currently in InnoDB format. We strongly recommend converting these tables to MyISAM otherwise you may experience major slow-downs while running the merge system.";
 
 $l['warning_prepare_data_unknown_column'] = "Module '{1}', Table '{2}', Column '{3}': MyBB Merge System couldn't probe the column's data type, the conversion may have errors.";

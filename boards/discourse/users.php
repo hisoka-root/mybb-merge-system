@@ -41,7 +41,7 @@ class DISCOURSE_Converter_Module_Users extends Converter_Module_Users {
 			LEFT JOIN ".OLD_TABLE_PREFIX."user_emails ue ON (ue.user_id = u.id AND ue.primary = TRUE)
 			LEFT JOIN ".OLD_TABLE_PREFIX."user_profiles up ON (up.user_id = u.id)
 			ORDER BY u.id ASC
-			LIMIT ".$this->trackers['start_users']." OFFSET ".$this->trackers['start_users']."
+			LIMIT ".$import_session['users_per_screen']." OFFSET ".$this->trackers['start_users']."
 		");
 		while($user = $this->old_db->fetch_array($query))
 		{

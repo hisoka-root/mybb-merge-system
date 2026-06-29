@@ -30,6 +30,37 @@ This update focuses on getting the MyBB Merge System running on modern PHP versi
   - PostgreSQL-only (`$supported_databases = array("pgsql")`)
 - Added `check_discourse()` and `discourse` password type to `loginconvert.php`
 
+### MySQL 8.x Compatibility Fixes
+
+Several issues were identified that would cause errors or data integrity problems on MySQL 8.0+ (which enables `ONLY_FULL_GROUP_BY` and deprecates MyISAM). All fixes remain backward-compatible with MySQL 5.7.
+
+- **`ONLY_FULL_GROUP_BY` violations (would fatal error on MySQL 8.0+):**
+  - `boards/phpbb3/users.php` — Moved `GROUP_CONCAT` into a subquery so `SELECT u.*` no longer conflicts with `GROUP BY u.user_id`
+  - `boards/smf2/forumperms.php` — Added `p.id_group` to `GROUP BY` clause (2 locations)
+  - `boards/wbb4/users.php` — Moved `GROUP_CONCAT` into a subquery; also fixed undefined `$this->fields` when no user options exist
+- **Engine and charset updates:**
+  - `resources/class_debug.php` — `ENGINE=MyISAM` → `InnoDB`, `CHARACTER SET utf8` → `utf8mb4` (full Unicode support)
+  - `resources/functions.php` — Trackers table `ENGINE=MyISAM` → `InnoDB`
+- **Deprecated syntax cleanup:**
+  - Removed `int(2)` and `bigint(30)` display widths (deprecated in MySQL 8.0.17+, removed in 8.4)
+  - Unquoted integer defaults (`default '0'` → `default 0`)
+  - Added `tinyint` fallback in column type detection (MySQL 8.0.17+ may omit display width from `SHOW COLUMNS`)
+- **Bug fixes in new code:**
+  - `boards/discourse/users.php` — Fixed `LIMIT` using wrong variable (offset instead of per-screen count)
+  - `index.php` — Escaped database name and `TABLE_PREFIX` in `information_schema` query; properly handled `LIKE` wildcard characters in table prefix
+  - `resources/functions.php` — Added missing `mysql_pdo` driver check in table engine and `ADD INDEX` conditions
+
+### Performance Optimizations
+
+Several optimizations significantly reduce import time without changing data conversion logic. All are backward-compatible and stable.
+
+- **Transaction wrapping** (`index.php`, `resources/class_converter_module.php`): Each import screen now runs inside a single transaction (`SET autocommit=0` / `COMMIT`) instead of auto-committing every individual INSERT. Reduces disk I/O by orders of magnitude.
+- **Deferred tracker writes** (`resources/class_converter_module.php`): `increment_tracker()` now updates only in-memory counters during import. `flush_trackers()` writes all trackers to the database once per screen instead of executing a `REPLACE` query per row. Eliminates thousands of unnecessary queries per screen.
+- **Cached lookups in post converters** (`boards/ipb4/posts.php`, `boards/ipb5/posts.php`): `get_thread()` and `get_uid_from_username()` now use instance caches, avoiding redundant queries when multiple posts share the same thread or editor.
+- **SMF2 edit user cache** (`boards/smf2/posts.php`): `modified_name` lookups are now cached to avoid repeated queries for the same editor name.
+- **Progress bar throttle** (`resources/output.php`): Added 100ms minimum interval between DOM flushes to reduce I/O overhead during large per-screen batches.
+- **InnoDB warning corrected** (`resources/class_converter_module.php`, `language/global.lang.php`): Removed the misleading warning that InnoDB "can cause major slow-downs." Now warns about MyISAM tables instead, which lack transaction support and are genuinely slower for write-heavy merge workloads.
+
 ### Requirements Check Enhancements
 
 - **MySQL engine detection**: Added check for MyISAM tables in the MyBB database during the requirements phase. Warns if MyISAM tables are found and recommends converting to InnoDB before merging.

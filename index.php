@@ -690,7 +690,9 @@ else if(!$import_session['requirements_check'] || ($mybb->input['first_page'] ==
 	$show_warnings = false;
 	if($db->type == "mysqli" || $db->type == "mysql" || $db->type == "mysql_pdo")
 	{
-		$query = $db->write_query("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = '".$config['database']['database']."' AND ENGINE = 'MyISAM' AND TABLE_NAME LIKE '".TABLE_PREFIX."%'");
+		$escaped_prefix = addcslashes(TABLE_PREFIX, '_%');
+		$db_name = $db->escape_string($config['database']['database']);
+		$query = $db->write_query("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = '{$db_name}' AND ENGINE = 'MyISAM' AND TABLE_NAME LIKE '{$escaped_prefix}%'");
 		while($table = $db->fetch_array($query))
 		{
 			$myisam_tables[] = $table['TABLE_NAME'];
@@ -1083,7 +1085,17 @@ elseif($import_session['module'] && $mybb->input['action'] != 'module_list')
 				$output->calculate_stats();
 
 				// Run, baby, run
+				if($db->type == "mysqli" || $db->type == "mysql_pdo")
+				{
+					$db->write_query("SET autocommit = 0");
+				}
 				$module->import();
+				$module->flush_trackers();
+				if($db->type == "mysqli" || $db->type == "mysql_pdo")
+				{
+					$db->write_query("COMMIT");
+					$db->write_query("SET autocommit = 1");
+				}
 			}
 
 			$output->print_footer();

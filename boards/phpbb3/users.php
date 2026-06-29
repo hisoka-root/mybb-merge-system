@@ -33,11 +33,15 @@ class PHPBB3_Converter_Module_Users extends Converter_Module_Users {
 
 		// Get members
 		$query = $this->old_db->query("
-			SELECT u.*, GROUP_CONCAT(g.group_id) as usergroups
+			SELECT u.*, COALESCE(groups.usergroups, '') as usergroups
 			FROM ".OLD_TABLE_PREFIX."users u
-			LEFT JOIN ".OLD_TABLE_PREFIX."user_group g ON(g.user_id=u.user_id AND g.user_pending=0)
+			LEFT JOIN (
+				SELECT user_id, GROUP_CONCAT(group_id) as usergroups
+				FROM ".OLD_TABLE_PREFIX."user_group
+				WHERE user_pending = 0
+				GROUP BY user_id
+			) groups ON groups.user_id = u.user_id
 			WHERE u.user_id > 0 AND u.username != 'Anonymous' AND u.group_id != 6
-			GROUP BY u.user_id
 			LIMIT {$this->trackers['start_users']}, {$import_session['users_per_screen']}
 		");
 		while($user = $this->old_db->fetch_array($query))

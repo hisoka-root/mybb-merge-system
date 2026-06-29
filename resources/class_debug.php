@@ -220,30 +220,29 @@ class Log {
 				case "sqlite":
 					$db->write_query("CREATE TABLE ".TABLE_PREFIX."debuglogs (
 						dlid INTEGER PRIMARY KEY,
-						type int(2) NOT NULL default '0',
+						type int NOT NULL default 0,
 						message text NOT NULL,
-						timestamp bigint(30) NOT NULL default '0'
+						timestamp bigint NOT NULL default 0
 					);");
 					break;
 				case "pgsql":
 				case "pgsql_pdo":
 					$db->write_query("CREATE TABLE ".TABLE_PREFIX."debuglogs (
 						dlid serial,
-						type int NOT NULL default '0',
+						type int NOT NULL default 0,
 						message text NOT NULL,
-						timestamp bigint NOT NULL default '0',
+						timestamp bigint NOT NULL default 0,
 						PRIMARY KEY(dlid)
 					);");
 					break;
 				default:
-					// The collation is hardcoded to avoid issues - probably there's a better fix?
 					$db->write_query("CREATE TABLE ".TABLE_PREFIX."debuglogs (
 						dlid int unsigned NOT NULL auto_increment,
-						type int(2) NOT NULL default '0',
+						type int NOT NULL default 0,
 						message text NOT NULL,
-						timestamp bigint(30) NOT NULL default '0',
+						timestamp bigint NOT NULL default 0,
 						PRIMARY KEY(dlid)
-					) ENGINE=MyISAM CHARACTER SET utf8 COLLATE utf8_general_ci;");
+					) ENGINE=InnoDB CHARACTER SET utf8mb4;");
 			}
 		}
 

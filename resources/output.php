@@ -1013,6 +1013,15 @@ END;
 			return;
 		}
 
+		// Throttle updates to avoid excessive DOM manipulation and flush overhead
+		static $last_update = 0;
+		$now = microtime(true);
+		if(!empty($status_message) && $now - $last_update < 0.1)
+		{
+			return;
+		}
+		$last_update = $now;
+
 		echo "<script type=\"text/javascript\">";
 		if($this->_last_left != $left)
 		{
