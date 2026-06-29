@@ -2,7 +2,24 @@
 
 ## [Unreleased] — PHP Compatibility & Bugfix Update
 
-This update focuses on getting the MyBB Merge System running on modern PHP versions (7.0 through 8.3) and fixing long-standing data integrity bugs. No new features or board converters have been added yet.
+This update focuses on getting the MyBB Merge System running on modern PHP versions (7.0 through 8.3), fixing long-standing data integrity bugs, and removing converters for defunct forum software.
+
+---
+
+### Deprecated & Removed Converters
+
+The following board converters have been removed to reduce technical debt and maintenance burden:
+
+- **PunBB** — Project merged into FluxBB in 2008; FluxBB itself is discontinued (2015)
+- **FluxBB** — Discontinued in 2015
+- **SMF 1.x** — Released 2006-2011, replaced by SMF 2.0 in 2011
+- **vBulletin 3** — Released 2004-2010, replaced by vBulletin 4 in 2010
+- **WoltLab Burning Board 3 (WBB3)** — Released 2007, superseded by WBB4 (2013) and WBB5+
+- **Invision Power Board 3 (IPB3)** — Released 2009, replaced by IPS 4 in 2015
+- **bbPress** — Heavily tied to WordPress internals; converter design doesn't align with modern bbPress versions
+- **Vanilla** — Upstream API has changed significantly; converter is not compatible with current Vanilla Forums releases
+
+> **Note:** Password hash types for these converters (`ipb3`, `punbb`, `wbb3`, `fluxbb`, `bbpress`, `vanilla`) remain in `loginconvert.php` so that users who merged in the past can still log in.
 
 ---
 
@@ -86,15 +103,10 @@ Several converters are missing mappings for MyBB fields that exist in the source
 
 #### Cross-Database Limitations
 Several converters use MySQL-specific SQL and are not tested with PostgreSQL or SQLite:
-- **bbPress**: restricted to MySQL (`$supported_databases = array("mysql")`)
-- **FluxBB**: restricted to MySQL
-- **IPB3**: restricted to MySQL
 - **IPB4**: restricted to MySQL
-- **Vanilla**: uses `GROUP_CONCAT` in users module (declares full database support)
-- **WBB3**: uses `GROUP_CONCAT` in users module (declares full database support)
 - **WBB4**: uses `GROUP_CONCAT` in users module (declares full database support)
 
-The **Vanilla**, **WBB3**, and **WBB4** converters should either be restricted to MySQL or have their `GROUP_CONCAT` queries rewritten.
+The **WBB4** converter should either be restricted to MySQL or have its `GROUP_CONCAT` queries rewritten.
 
 #### Other
 - **`set_error_notice_in_progress()`** in `resources/output.php` sets a property that is never read. The function is called from avatar and attachment modules but the value is effectively discarded. This is harmless but dead code.
