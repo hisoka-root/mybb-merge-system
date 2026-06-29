@@ -123,12 +123,12 @@ abstract class Converter_Module
 			$this->trackers['start_'.$tracker['type']] = $tracker['count'];
 		}
 
-		$this->board = &$converter_class;
-		$this->old_db = &$this->board->old_db;
+		$this->board = $converter_class;
+		$this->old_db = $this->board->old_db;
 		$this->board->settings = &$this->settings;
-		$this->board->get_import = &$this->get_import;
+		$this->board->get_import = $this->get_import;
 		$this->board->trackers = &$this->trackers;
-		$this->debug = &$debug;
+		$this->debug = $debug;
 	}
 
 	/**

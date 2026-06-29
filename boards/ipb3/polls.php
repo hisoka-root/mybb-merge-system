@@ -44,7 +44,7 @@ class IPB3_Converter_Module_Polls extends Converter_Module_Polls {
 		$insert_data['import_tid'] = $data['tid'];
 		$insert_data['import_pid'] = $data['pid'];
 		$insert_data['tid'] = $this->get_import->tid($data['tid']);
-		$choices = unserialize(utf8_decode($data['choices']));
+		$choices = unserialize(merge_utf8_decode($data['choices']));
 		$choices = $choices[1];
 
 		$seperator = '';

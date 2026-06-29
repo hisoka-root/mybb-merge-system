@@ -160,9 +160,9 @@ function loginconvert_convert(&$login)
 		$check = $function($login->data['password'], $user);
 
 		// If the password was wrong, an utf8 password and we want to check utf8 passwords we call the function again
-		if(!$check && in_array($login_type, $utf8_recheck) && utf8_decode($login->data['password']) != $login->data['password'])
+		if(!$check && in_array($login_type, $utf8_recheck) && merge_utf8_decode($login->data['password']) != $login->data['password'])
 		{
-			$check = $function(utf8_decode($login->data['password']), $user);
+			$check = $function(merge_utf8_decode($login->data['password']), $user);
 		}
 
 		if(!$check)

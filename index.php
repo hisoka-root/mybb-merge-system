@@ -80,21 +80,8 @@ if(!isset($config['database']['type']))
 	}
 }
 
-// If we have register globals on and we're coming from the db config page it seems to screw up the $config variable
-$config_copy = array();
-if(@ini_get("register_globals") == 1)
-{
-	$config_copy = $config;
-}
-
 require_once MYBB_ROOT."inc/class_core.php";
 $mybb = new MyBB;
-
-if(@ini_get("register_globals") == 1)
-{
-	$config = $config_copy;
-}
-unset($config_copy);
 
 require_once MYBB_ROOT."inc/class_error.php";
 require_once MERGE_ROOT."resources/class_error.php";

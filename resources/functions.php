@@ -14,6 +14,48 @@ if(!defined("IN_MYBB"))
 }
 
 /**
+ * Encode an ISO-8859-1 string to UTF-8
+ * Replaces the deprecated utf8_encode() with mbstring/iconv fallbacks
+ */
+function merge_utf8_encode($text)
+{
+	if(function_exists('mb_convert_encoding'))
+	{
+		return mb_convert_encoding($text, 'UTF-8', 'ISO-8859-1');
+	}
+	if(function_exists('iconv'))
+	{
+		return iconv('ISO-8859-1', 'UTF-8', $text);
+	}
+	if(function_exists('utf8_encode'))
+	{
+		return @utf8_encode($text);
+	}
+	return $text;
+}
+
+/**
+ * Decode a UTF-8 string to ISO-8859-1
+ * Replaces the deprecated utf8_decode() with mbstring/iconv fallbacks
+ */
+function merge_utf8_decode($text)
+{
+	if(function_exists('mb_convert_encoding'))
+	{
+		return mb_convert_encoding($text, 'ISO-8859-1', 'UTF-8');
+	}
+	if(function_exists('iconv'))
+	{
+		return iconv('UTF-8', 'ISO-8859-1', $text);
+	}
+	if(function_exists('utf8_decode'))
+	{
+		return @utf8_decode($text);
+	}
+	return $text;
+}
+
+/**
  * Updates the import session cache which contains: stats, completed modules, paused modules, current modules, etc
  *
  */
@@ -459,12 +501,12 @@ function encode_to_utf8($text, $old_table_name, $new_table_name)
     {
         if(!function_exists('iconv'))
         {
-            if(fetch_iconv_encoding($import_session['table_charset_old'][$old_table_name]) != 'iso-8859-1' || !function_exists("utf8_encode"))
+            if(fetch_iconv_encoding($import_session['table_charset_old'][$old_table_name]) != 'iso-8859-1')
             {
                 return $text;
             }
 
-			return utf8_encode($text);
+			return merge_utf8_encode($text);
         }
 
 		$converted_str = iconv(fetch_iconv_encoding($import_session['table_charset_old'][$old_table_name]), fetch_iconv_encoding($import_session['table_charset_new'][$new_table_name]).'//TRANSLIT', $text);
@@ -781,8 +823,8 @@ if(!function_exists('htmlspecialchars_decode'))
 function utf8_unhtmlentities($string)
 {
 	// Replace numeric entities
-	$string = preg_replace_callback('~&#x([0-9a-f]+);~i', create_function('$matches', 'return unichr(hexdec($matches[1]));'), $string);
-	$string = preg_replace_callback('~&#([0-9]+);~', create_function('$matches', 'return unichr($matches[1]);'), $string);
+	$string = preg_replace_callback('~&#x([0-9a-f]+);~i', function($matches) { return unichr(hexdec($matches[1])); }, $string);
+	$string = preg_replace_callback('~&#([0-9]+);~', function($matches) { return unichr($matches[1]); }, $string);
 
 	// Replace literal entities
 	$trans_tbl = get_html_translation_table(HTML_ENTITIES);

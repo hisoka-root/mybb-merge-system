@@ -116,7 +116,7 @@ class Log {
 				if(is_string($value) && false === preg_match('//u', $value))
 				{
 					// the value is likely binary data. We'll try converting it to an IP first and if that fails we'll just set the field to blank.
-					$ip = inet_ntop($value);
+					$ip = function_exists('inet_ntop') ? inet_ntop($value) : false;
 					if(false === $ip)
 					{
 						$value = '';
@@ -276,9 +276,9 @@ class Log {
 
 		foreach($trace as $call)
 		{
-			if(!$call['file']) $call['file'] = "[PHP]";
-			if(!$call['line']) $call['line'] = "&nbsp;";
-			if($call['class']) $call['function'] = $call['class'].$call['type'].$call['function'];
+			if(empty($call['file'])) $call['file'] = "[PHP]";
+			if(empty($call['line'])) $call['line'] = "&nbsp;";
+			if(!empty($call['class'])) $call['function'] = $call['class'].$call['type'].$call['function'];
 			$call['file'] = str_replace(substr(MYBB_ROOT, 0, -1), "", $call['file']);
 			$backtrace .= "File: {$call['file']} Line: {$call['line']} Function: {$call['function']} -> \r\n";
 		}
