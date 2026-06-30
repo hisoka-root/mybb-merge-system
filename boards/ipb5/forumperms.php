@@ -70,10 +70,6 @@ class IPB5_Converter_Module_Forumperms extends Converter_Module_Forumperms {
 				{
 					$new_perms[$gid][$operm] = 1;
 				}
-				else
-				{
-					$new_perms[$gid][$operm] = 0;
-				}
 			}
 		}
 
@@ -83,6 +79,22 @@ class IPB5_Converter_Module_Forumperms extends Converter_Module_Forumperms {
 
 			foreach($new_perms as $gid => $perm2)
 			{
+				// Skip permission rows with no positive permissions
+				$has_permission = false;
+				foreach($perm2 as $value)
+				{
+					if($value == 1)
+					{
+						$has_permission = true;
+						break;
+					}
+				}
+
+				if(!$has_permission)
+				{
+					continue;
+				}
+
 				$perm_array = $perm2;
 				$perm_array['gid'] = $gid;
 				$perm_array['fid'] = $fid;

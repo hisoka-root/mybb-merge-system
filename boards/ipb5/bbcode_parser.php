@@ -27,6 +27,10 @@ class BBCode_Parser extends BBCode_Parser_HTML {
 	 */
 	function convert($text)
 	{
+		// Strip attachment links before HTML→BBcode conversion
+		$text = preg_replace('#<a\s+class="ipsAttachLink[^"]*"\s+href="[^"]*"[^>]*>[^<]*</a>#si', '', $text);
+		$text = preg_replace('#<a\s+[^>]*class="[^"]*ipsAttachLink_image[^"]*"[^>]*>(<img[^>]*>)</a>#si', '$1', $text);
+
 		// TODO: IPS5 may use different data attributes. Verify these regex patterns.
 		$text = preg_replace('# data-ipb=\'(.*?)\'#si', "", $text);
 		$text = preg_replace('# rel="(.*?)"#si', "", $text);

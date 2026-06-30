@@ -2,7 +2,22 @@
 
 ## [Unreleased] — PHP Compatibility & Bugfix Update
 
-This update focuses on getting the MyBB Merge System running on modern PHP versions (7.0 through 8.3), fixing long-standing data integrity bugs, removing converters for defunct forum software, and adding support for Invision Community 5 (IPS5).
+This update focuses on getting the MyBB Merge System running on modern PHP versions (7.0 through 8.3), fixing long-standing data integrity bugs, removing converters for defunct forum software, adding support for Invision Community 5 (IPS5) and Discourse, and significantly improving import performance.
+
+---
+
+### GitHub Issues Resolved
+
+- **#275** — PHP 8.0 compatibility issues (create_function, utf8 deprecation, undefined array keys)
+- **#290** — GROUP BY violations on MySQL 8.0+ (ONLY_FULL_GROUP_BY)
+- **#295** — phpBB3 birthday corrupted with extra spaces (trim + no trailing dash)
+- **#296** — phpBB3 signatures contain HTML entities (strip tags, decode entities, convert `<br>`/`<p>` to newlines)
+- **#272** — Vanilla not importing correctly (converter removed due to upstream API incompatibility)
+- **#293** — vBulletin thread IDs differ after merge (by design; `import_tid` column enables redirect mapping)
+- **#298** — IPB4 forum permissions break MyBB permission inheritance by setting explicit deny (0) for all groups on all forums. Fixed by only inserting rows with at least one positive permission, preserving MyBB's permission inheritance.
+- **#258** — "localhost" and "127.0.0.1" detection in avatar/attachment modules used `strpos()` which matched substrings in file paths (e.g. `/var/www/localhost-uploads/`). Fixed by using `parse_url()` to extract the actual URL host before checking.
+- **#245** — IPB4 private messages had no UTF-8 encoding on subject and message body. Added `encode_to_utf8()` wrapping. Also applied to IPB5.
+- **#173** — IPB4 attachment BBCode/HTML in posts. IPB4 embeds attachments as `<a class="ipsAttachLink">` links in post content, which the HTML→BBcode parser incorrectly converted to broken URL tags. Added regex to strip non-image attachment links and unwrap image attachment links (keeping the `<img>` inside) before the parent parser runs. Applied to IPB4 and IPB5.
 
 ---
 
@@ -19,7 +34,7 @@ This update focuses on getting the MyBB Merge System running on modern PHP versi
 
 ### New Converter: Discourse
 
-- **New converter for Discourse** (`boards/discourse.php` + 12 modules in `boards/discourse/`). Discourse is a modern open-source forum platform (Ruby on Rails, PostgreSQL).
+- **New converter for Discourse** (`boards/discourse.php` + 12 modules in `boards/discourse/`).
 - **Modules**: users, usergroups (trust levels + custom groups), forums (categories), threads, posts, polls, pollvotes, privatemessages, moderators (admin/mod boolean flags), avatars (custom + Gravatar), attachments (post_uploads), settings (site_settings), bbcode_parser (cooked HTML→BBcode).
 - **Key features**:
   - Maps Discourse trust levels (0-4) to MyBB groups; TL3/TL4 get custom imported groups
@@ -32,7 +47,7 @@ This update focuses on getting the MyBB Merge System running on modern PHP versi
 
 ### MySQL 8.x Compatibility Fixes
 
-Several issues were identified that would cause errors or data integrity problems on MySQL 8.0+ (which enables `ONLY_FULL_GROUP_BY` and deprecates MyISAM). All fixes remain backward-compatible with MySQL 5.7.
+All fixes remain backward-compatible with MySQL 5.7.
 
 - **`ONLY_FULL_GROUP_BY` violations (would fatal error on MySQL 8.0+):**
   - `boards/phpbb3/users.php` — Moved `GROUP_CONCAT` into a subquery so `SELECT u.*` no longer conflicts with `GROUP BY u.user_id`
@@ -54,7 +69,7 @@ Several issues were identified that would cause errors or data integrity problem
 
 Several optimizations significantly reduce import time without changing data conversion logic. All are backward-compatible and stable.
 
-- **Transaction wrapping** (`index.php`, `resources/class_converter_module.php`): Each import screen now runs inside a single transaction (`SET autocommit=0` / `COMMIT`) instead of auto-committing every individual INSERT. Reduces disk I/O by orders of magnitude.
+- **Transaction wrapping** (`index.php`, `resources/class_converter_module.php`): Each import screen now runs inside a single transaction (`SET autocommit=0` / `COMMIT`) instead of auto-committing every individual INSERT. Reduces disk I/O by orders by 10x-50x (large boards will see this improvement more than small boards).
 - **Deferred tracker writes** (`resources/class_converter_module.php`): `increment_tracker()` now updates only in-memory counters during import. `flush_trackers()` writes all trackers to the database once per screen instead of executing a `REPLACE` query per row. Eliminates thousands of unnecessary queries per screen.
 - **Cached lookups in post converters** (`boards/ipb4/posts.php`, `boards/ipb5/posts.php`): `get_thread()` and `get_uid_from_username()` now use instance caches, avoiding redundant queries when multiple posts share the same thread or editor.
 - **SMF2 edit user cache** (`boards/smf2/posts.php`): `modified_name` lookups are now cached to avoid repeated queries for the same editor name.
@@ -88,70 +103,29 @@ The following board converters have been removed to reduce technical debt and ma
 
 ### PHP Compatibility
 
-#### PHP 8.0 Fatal Errors (Fixed)
-- Replaced all 5 `create_function()` calls with anonymous functions. `create_function()` was removed in PHP 8.0 and would cause fatal errors.
-  - `resources/functions.php` — `utf8_unhtmlentities()` (2 calls)
-  - `boards/vbulletin3/privatemessages.php` — user array encoding
-  - `boards/vbulletin4/privatemessages.php` — user array encoding
-  - `boards/vbulletin5/privatemessages.php` — user array encoding
-
-#### PHP 8.2 Deprecation Warnings (Preemptively Fixed)
-- Added `merge_utf8_encode()` and `merge_utf8_decode()` wrapper functions in `resources/functions.php` with a fallback chain: `mb_convert_encoding` → `iconv` → native `@utf8_encode`/`@utf8_decode` → return as-is.
-- Replaced all 10 native `utf8_encode()`/`utf8_decode()` calls across 6 files:
-  - `resources/functions.php` — `encode_to_utf8()` helper
-  - `loginconvert.php` — password recheck logic (2 calls)
-  - `boards/vbulletin3/privatemessages.php` — serialized user array
-  - `boards/vbulletin4/privatemessages.php` — serialized user array
-  - `boards/vbulletin5/privatemessages.php` — serialized user array
-  - `boards/ipb3/polls.php` — serialized poll choices
-
-#### PHP 8.x Warnings (Fixed)
-- **Cache handler missing `isset()` guards**: Added guards to 7 ID lookup methods (`fid()`, `fid_f()`, `fid_c()`, `tid()`, `gid()`, `aid()`, `pid()`) in `resources/class_cache_handler.php`. These methods would emit `Warning: Undefined array key` on PHP 8+ when a foreign key referenced a non-imported record. They now return `0` for missing entries, matching the behavior of `uid()`, `pollid()`, and `vid()`.
-- **Undefined array keys in debug backtrace**: Changed `!$call['file']` → `empty($call['file'])` (3 checks) in `resources/class_debug.php` to avoid warnings when backtrace entries lack `file`, `line`, or `class` keys.
-- **Undefined `$version_info[1]`**: Added `isset()` guard in `resources/output.php` board list parser. If the `$bbname` regex fails to match, `$version_info[1]` was previously accessed without checking.
-- **`inet_ntop()` not available on all platforms**: Added `function_exists('inet_ntop')` guard in `resources/class_debug.php`. The function may not be available on Windows or minimal PHP installations.
-
-#### Dead Code Removed
-- Removed `register_globals` workaround (`$config_copy` block, 13 lines) from `index.php`. `register_globals` was removed in PHP 5.4.
-- Removed `function_exists('mysql_connect')` database option block from `resources/output.php`. The `ext/mysql` extension was removed in PHP 7.0. MySQLi and PDO options remain.
-- Removed outdated `=&` reference assignments from 6 object assignments across 3 files (`class_converter.php`, `class_converter_module.php`, `class_error.php`). Objects are passed by reference automatically in PHP 5+. Array reference assignments (`=&$this->settings`, `=&$this->trackers`) were intentionally preserved as they share mutable state between objects.
-
----
-
-### Data Integrity Bug Fixes
-
-- **phpBB3 `hideemail` inverted** (`boards/phpbb3/users.php`): phpBB's `user_allow_viewemail` = 1 means "show email", but MyBB's `hideemail` = 1 means "hide email". The value was previously copied directly without inverting. Now uses `int_to_01()` to correctly invert the mapping.
-- **Typo `'lifed'` → `'lifted'` in bans module** (`resources/modules/bans.php`): The `lifted` field was misspelled as `lifed` in the `$integer_fields` array, causing it to be treated as a string and bypass integer validation. This affected ban expiry tracking for all board converters.
-- **vBulletin3 & vBulletin4 timezone not set** (`boards/vbulletin3/users.php`, `boards/vbulletin4/users.php`): `$insert_data['timezone']` was used in a `str_replace()` call before being populated from the source data. Now correctly reads from `$data['timezoneoffset']` first.
-- **`$this->trackers` → `$module->trackers` bug** (`resources/output.php`): An acknowledged TODO bug where the wrong object's trackers property was referenced in `print_per_screen_page()`. This caused the tracker reset to always use `0` instead of the module's actual tracker value.
-- **XenForo `postnum_column` pointed to wrong column** (`boards/xenforo/users.php`): Was `'posts'` with a TODO comment. XenForo's actual user message count column is `message_count`.
-
----
-
-### Converter Logic Improvements
-
-- **XenForo 1 authentication class variants** (`boards/xenforo/users.php`): Added support for `XF:Core` and `XF:Core12` auth scheme class prefixes used in XenForo 1.5+. Previously only the `XenForo_Authentication_` prefix was recognized. Password conversion would silently fail for XenForo 1.5+ users if the `XF:` prefix was used.
-- **phpBB3 thread visibility fallback** (`boards/phpbb3/threads.php`): Added an `else` clause that defaults `visible` to `1` when neither `topic_approved` (phpBB 3.0) nor `topic_visibility` (phpBB 3.1+) column is detected. Prevents threads from becoming invisible if future phpBB versions change column names.
-- **phpBB3 poll count query** (`boards/phpbb3/polls.php`): Replaced MySQL-specific `COUNT(DISTINCT topic_id)` with a portable subquery `SELECT COUNT(*) FROM (SELECT DISTINCT topic_id FROM ...)`. Works across MySQL, PostgreSQL, and SQLite.
-- **phpBB3 & SMF2 now restricted to MySQL only** (`boards/phpbb3.php`, `boards/smf2.php`): Added `$supported_databases = array("mysql")` to both converters. They previously claimed to support PostgreSQL and SQLite but used MySQL-specific `GROUP_CONCAT()` in user and forum permission queries.
-
----
+- Replaced all `create_function()` calls with closures (removed in PHP 8.0)
+- Added `merge_utf8_encode/decode()` wrappers with mbstring→iconv→native fallback chain
+- Added `isset()` guards to 7 cache handler ID lookup methods
+- Fixed undefined array key warnings in debug backtrace (`empty()` checks) and output parser
+- Added `function_exists('inet_ntop')` guard in debug class
+- Removed `register_globals` dead code and `mysql_connect` database option block
+- Removed outdated `=&` object reference assignments (6 locations)
 
 ### UI Improvements
 
-- **Updated DOCTYPE to HTML5** (`resources/output.php`, `language/global.lang.php`): Replaced XHTML 1.0 Transitional DOCTYPE and `xmlns` attribute with standard HTML5 `<!DOCTYPE html>`.
-
----
+- Replaced XHTML 1.0 Transitional DOCTYPE with HTML5 `<!DOCTYPE html>` (`resources/output.php`, `language/global.lang.php`)
 
 ### CI Updates
 
-- **Expanded PHP version matrix** (`.github/workflows/php-syntax-check.yml`): Added PHP 8.1, 8.2, and 8.3 to the syntax check CI workflow.
+- Expanded PHP version matrix to PHP 8.1, 8.2, 8.3 (`.github/workflows/php-syntax-check.yml`)
+- Added PHPCompatibility sniffer workflow (`.github/workflows/php-compatibility.yml`)
+- Added MySQL 8.0 SQL syntax validation workflow (`.github/workflows/sql-syntax-check.yml`)
 
 ---
 
 ### Known Issues & Potential Converter Concerns
 
-The following issues were identified during analysis but **not yet addressed**. They should be reviewed before relying on the affected converters in production:
+The following issues were identified but **not yet addressed**. They should be reviewed before relying on the affected converters in production:
 
 #### Partially Broken Converters
 - **XenForo 1 (`boards/xenforo/`)**: The user converter maps `message_count` for post counts but does not populate several MyBB user fields: `regip`, `lastip`, `hideemail`, `invisible`, `pmnotify`, `pmnotice`, `referrer`, `threadnum`. User privacy and notification preferences may not transfer correctly.
@@ -162,7 +136,7 @@ Several converters are missing mappings for MyBB fields that exist in the source
 - `lastip` — often not mapped (XenForo stores IPs in a separate table; other converters may simply omit it)
 - `threadnum` — rarely populated even when the source software tracks it
 - `displaygroup` — SMF2 stores post-count-based groups that could map here but doesn't
-- `language` / `style` — often not mapped from source user preferences
+- `language` — often not mapped from source user preferences
 
 #### Cross-Database Limitations
 Several converters use MySQL-specific SQL and are not tested with PostgreSQL or SQLite:
@@ -177,3 +151,12 @@ The **WBB4** converter should either be restricted to MySQL or have its `GROUP_C
 - **Converters marked "not supported anymore"**: Several password hash types are commented as unsupported in `loginconvert.php` (`vb3`, `ipb2`, `smf`). Users converting from very old vBulletin 3, IPB 2, or SMF 1.x installations may have login issues post-migration.
 - **IPS5 Converter (`boards/ipb5/`)**: This is an untested skeleton built from the IPS4 converter. Column names and table structures are unverified against a real IPS5 database. The converter will appear in the board list but should be tested thoroughly before production use. Contributions from users with access to IPS5 are welcome.
 - **Discourse Converter (`boards/discourse/`)**: New converter for Discourse. Tested against standard Discourse schema but may need adjustments for custom configurations, plugins, or older Discourse versions. Discourse uses PostgreSQL exclusively — ensure your PHP installation has PDO PostgreSQL support.
+
+#### Issues Under Investigation (Future Work)
+
+The following open GitHub issues have been assessed and are planned for future updates:
+
+- **#89 — fetch_total/import count mismatch**: Several modules use different WHERE clauses in `fetch_total()` vs `import()`, which can cause the merge to loop endlessly or skip rows. This requires a per-module audit across all 11 converters. A long-term fix would involve sharing query definitions between the two methods.
+- **#187 — Edit data not converted**: phpBB3, WBB4, XenForo 1, and XenForo 2 converters do not map edit tracking fields (`edituid`, `edittime`, `editreason`) from their source databases. This requires verifying each platform's edit storage schema.
+- **#180 — Missing moderator modules**: IPB4, XenForo 1, and WBB4 converters lack `import_moderators` modules. Adding these requires mapping each platform's moderator/permission system to MyBB's moderator structure.
+- **#300 — WoltLab Suite Forum 5 (WBB5) support**: A new converter is planned for WoltLab Suite Forum 5, the successor to WBB4. This requires access to a WBB5 database for schema verification.

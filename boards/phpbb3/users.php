@@ -84,9 +84,10 @@ class PHPBB3_Converter_Module_Users extends Converter_Module_Users {
 		{
 			$birthday_arr = explode('-', $data['user_birthday']);
 
-			foreach($birthday_arr as $bday_part)
+			foreach($birthday_arr as $i => $bday_part)
 			{
-				if(substr($bday_part, 0, 1) == "0")
+				$bday_part = trim($bday_part);
+				if(substr($bday_part, 0, 1) == "0" && strlen($bday_part) > 1)
 				{
 					$birthday .= substr($bday_part, 1);
 				}
@@ -95,7 +96,10 @@ class PHPBB3_Converter_Module_Users extends Converter_Module_Users {
 					$birthday .= $bday_part;
 				}
 
-				$birthday .= "-";
+				if($i < count($birthday_arr) - 1)
+				{
+					$birthday .= "-";
+				}
 			}
 		}
 
@@ -130,7 +134,15 @@ class PHPBB3_Converter_Module_Users extends Converter_Module_Users {
 			$insert_data['timezone'] = get_timezone($data['user_timezone']);
 		}
 		$insert_data['dst'] = $data['user_dst'];
-		$insert_data['signature'] = encode_to_utf8($this->bbcode_parser->convert($data['user_sig'], $data['user_sig_bbcode_uid']), "users", "users");
+		$signature = $this->bbcode_parser->convert($data['user_sig'], $data['user_sig_bbcode_uid']);
+		// phpBB3 stores parsed HTML in signatures. Strip remaining HTML tags and entities.
+		$signature = utf8_unhtmlentities($signature);
+		$signature = strip_tags($signature, '<br><p>');
+		// Convert remaining <br> and <p> tags to newlines
+		$signature = str_ireplace(array('<br />', '<br>', '<br/>'), "\n", $signature);
+		$signature = preg_replace('#</?p[^>]*>#i', "\n", $signature);
+		$signature = trim($signature);
+		$insert_data['signature'] = encode_to_utf8($signature, "users", "users");
 		$insert_data['regip'] = my_inet_pton($data['user_ip']);
 		$insert_data['lastip'] = my_inet_pton($data['user_ip']);
 		$insert_data['totalpms'] = $this->get_private_messages($data['user_id']);
